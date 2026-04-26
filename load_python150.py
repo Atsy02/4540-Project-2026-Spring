@@ -1,3 +1,5 @@
+import os
+
 from datasets import load_dataset
 import torch
 import pickle
@@ -86,6 +88,7 @@ def process_py150k_dataset(split='train'):
             token = sample['gt']
             label = token_to_label.get(token, oov_label)  # Map to real token ID
 
+
             processed_data.append((features, tree, label))
 
         except Exception as e:
@@ -113,7 +116,7 @@ def split_data(data, train_ratio=3 / 5, val_ratio=1 / 15, test_ratio=1 / 3):
 
 
 def save_processed_splits(train_data, val_data, test_data, output_dir='./processed_data'):
-    """save the processed data to pickle"""
+    """保存处理后的数据为pickle文件"""
     import os
     os.makedirs(output_dir, exist_ok=True)
 
@@ -129,7 +132,7 @@ def save_processed_splits(train_data, val_data, test_data, output_dir='./process
 
 
 def load_processed_splits(input_dir='./processed_data'):
-    """load the data from pickle file"""
+    """从pickle文件加载处理后的数据"""
     with open(os.path.join(input_dir, 'train_data.pkl'), 'rb') as f:
         train_data = pickle.load(f)
     with open(os.path.join(input_dir, 'val_data.pkl'), 'rb') as f:
@@ -141,9 +144,12 @@ def load_processed_splits(input_dir='./processed_data'):
 
 
 if __name__ == "__main__":
+    # 处理数据集
     print("Loading and processing PY150k dataset...")
     processed_data = process_py150k_dataset(split='train')
 
+    # 划分数据
     train_data, val_data, test_data = split_data(processed_data)
 
+    # 保存数据
     save_processed_splits(train_data, val_data, test_data)
