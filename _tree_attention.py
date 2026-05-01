@@ -7,6 +7,8 @@ from typing import List, Tuple, Dict, Optional
 import numpy as np
 from collections import defaultdict
 
+import matplotlib.pyplot as plt
+from sklearn.metrics import f1_score
 
 # ============================================================================
 # 1. FEATURE MAP (Linearization of Attention)
@@ -423,40 +425,42 @@ class TreeAttentionModel(nn.Module):
 # ============================================================================
 # 6. TRAINING LOOP
 # ============================================================================
+def compute_f1(model, dataset, device):
+    preds = []
+    targets = []
+    model.eval()
+    with torch.no_grad():
+        for features, tree, label in dataset:
+            features = features.to(device)
+            logits = model(features, tree)
+            pred = logits.argmax(dim=1).item()
+            preds.append(pred)
+            targets.append(label)
+    # Macro F1 for multi-class
+    return f1_score(targets, preds, average='macro')
 
 def train(
-        model: nn.Module,
-        train_dataset: Dataset,
-        val_dataset: Optional[Dataset],
-        num_epochs: int = 50,
-        batch_size: int = 8,
-        learning_rate: float = 1e-3,
-        device: str = "cpu",
+    model,
+    train_dataset,
+    val_dataset=None,
+    num_epochs=20,
+    batch_size=1,
+    learning_rate=1e-3,
+    device="cpu"
 ):
-    """Training loop with multiple polynomial degrees"""
-
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(), lr=learning_rate)
-    # Keep each sample as (features, tree, label); default collate cannot stack custom Tree objects.
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        collate_fn=lambda batch: batch,
-    )
+    criterion = nn.CrossEntropyLoss()
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    history = {"train_loss": [], "val_loss": [], "val_acc": []}
+    history = {"train_loss": [], "val_loss": [], "val_acc": [], "val_f1": []}
 
     for epoch in range(num_epochs):
-        # Training phase
         model.train()
         total_loss = 0.0
-
-        for batch_idx, batch in enumerate(train_loader):
+        for batch in train_loader:
             optimizer.zero_grad()
             batch_loss = 0.0
-
             for features, tree, label in batch:
                 features = features.to(device)
                 label = torch.as_tensor(label, device=device).long()
@@ -498,15 +502,30 @@ def train(
 
             val_loss /= len(val_dataset)
             val_acc = correct / total
+            # Compute F1 score
+            val_f1 = compute_f1(model, val_dataset, device)
             history["val_loss"].append(val_loss)
             history["val_acc"].append(val_acc)
+            history["val_f1"].append(val_f1)
 
             print(
-                f"Epoch {epoch + 1:3d} | Train Loss: {avg_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+                f"Epoch {epoch + 1:3d} | Train Loss: {avg_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | Val F1: {val_f1:.4f}")
         else:
             print(f"Epoch {epoch + 1:3d} | Train Loss: {avg_loss:.4f}")
 
     return history
+
+def plot_metrics(metric_histories, poly_degrees, metric_key, ylabel, title):
+    plt.figure(figsize=(8, 5))
+    for deg, hist in zip(poly_degrees, metric_histories):
+        plt.plot(hist[metric_key], label=f"Poly Degree {deg}")
+    plt.xlabel("Epoch")
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -527,8 +546,11 @@ if __name__ == "__main__":
         num_classes=4
     )
 
-    # Test with polynomial degrees 1, 2, 4
-    for poly_degree in [1, 2, 4]:
+    # save metrics history for each poly_degree
+    metric_histories = []
+    poly_degrees = [1, 2, 4, 8]
+
+    for poly_degree in poly_degrees:
         print(f"\n{'=' * 60}")
         print(f"Training with polynomial degree: {poly_degree}")
         print(f"{'=' * 60}")
@@ -548,8 +570,14 @@ if __name__ == "__main__":
             model,
             train_dataset,
             val_dataset,
-            num_epochs=50,
+            num_epochs=200,
             batch_size=8,
             learning_rate=1e-3,
             device=device,
         )
+        metric_histories.append(history)
+
+    # visulization of the results
+    plot_metrics(metric_histories, poly_degrees, "val_acc", "Validation Accuracy", "Validation Accuracy by Polynomial Degree")
+    plot_metrics(metric_histories, poly_degrees, "val_f1", "Validation F1 Score", "Validation F1 Score by Polynomial Degree")
+    plot_metrics(metric_histories, poly_degrees, "val_loss", "Validation Loss", "Validation Loss by Polynomial Degree")
