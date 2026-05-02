@@ -448,10 +448,19 @@ def train(
     learning_rate=1e-3,
     device="cpu"
 ):
+    def collate_tree_batch(batch):
+        # Keep samples as-is because default collation cannot handle custom Tree objects.
+        return batch
+
     model = model.to(device)
     optimizer = Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=collate_tree_batch,
+    )
 
     history = {"train_loss": [], "val_loss": [], "val_acc": [], "val_f1": []}
 
@@ -529,26 +538,20 @@ def plot_metrics(metric_histories, poly_degrees, metric_key, ylabel, title):
 
 
 if __name__ == "__main__":
-    # Test example
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Create synthetic dataset
-    train_dataset = SyntheticTreeDataset(
-        num_samples=100,
-        num_nodes=20,
-        d_feat=8,
-        num_classes=4
-    )
-    val_dataset = SyntheticTreeDataset(
-        num_samples=20,
-        num_nodes=20,
-        d_feat=8,
-        num_classes=4
-    )
+    from load_python150 import load_py150k_dataset, extract_ast_from_code, convert_ast_to_tree_structure
+
+    # 加载PY150k数据集
+    ds = load_py150k_dataset()
+    from load_python150 import train_data, val_data, test_data
+
+    train_dataset = train_data
+    val_dataset = val_data
 
     # save metrics history for each poly_degree
     metric_histories = []
-    poly_degrees = [1, 2, 4, 8]
+    poly_degrees = [1, 2, 4]
 
     for poly_degree in poly_degrees:
         print(f"\n{'=' * 60}")
@@ -570,7 +573,7 @@ if __name__ == "__main__":
             model,
             train_dataset,
             val_dataset,
-            num_epochs=200,
+            num_epochs=100,
             batch_size=8,
             learning_rate=1e-3,
             device=device,
