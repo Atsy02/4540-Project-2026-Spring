@@ -1,0 +1,13 @@
+model,final_val_acc,final_val_f1,best_val_acc,avg_epoch_time
+Standard,0.9569,0.1630,0.9655,0.295
+Naive Tree,0.9655,0.1965,0.9655,0.436
+Tree,0.9569,0.1630,0.9655,12.118
+FFT-Tree,0.9483,0.1391,0.9655,8.138
+
+
+Scaling (forward-pass ms)
+model,N=20,N=100,N=500,N=1000,N=10000
+Standard,0.08,0.16,0.46,1.28,136.73
+Naive Tree,0.66,13.06,321.65,1265.15,149143.53
+Tree,9.99,52.44,263.40,521.13,6331.04
+FFT-Tree,8.49,43.94,216.72,468.49,5295.08
