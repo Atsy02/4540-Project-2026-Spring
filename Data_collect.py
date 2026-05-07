@@ -21,7 +21,7 @@ def load_py150k_dataset():
 
 def _detokenize_code(text: str) -> str:
     """
-    将数据集里的 token 化代码恢复成可被 ast.parse 解析的 Python 源码。
+    restore the tokenized code to Python source code processed by ast.parse
     """
     if text is None:
         return ""
@@ -37,7 +37,7 @@ def _detokenize_code(text: str) -> str:
     s = s.replace("<EOL>", "\n")
 
     # change the placeholder to string
-    s = s.replace("<STR_LIT>", "'x'")  # 替换为字符串字面量
+    s = s.replace("<STR_LIT>", "'x'")  
     s = s.replace("<NUM_LIT>", "0")
     s = s.replace("<CHAR_LIT>", "'c'")
 
@@ -204,13 +204,13 @@ def process_py150k_dataset(split='train', debug=False, max_vocab_size=10000):
             # check whether the data is valid
             if not input_code or not isinstance(input_code, str):
                 if debug and failed_count < 10:
-                    print(f"[{idx}] 无效的 input 字段")
+                    print(f"[{idx}] invalid input ")
                 failed_count += 1
                 continue
 
             if not gt_token or not isinstance(gt_token, str):
                 if debug and failed_count < 10:
-                    print(f"[{idx}] 无效的 gt 字段")
+                    print(f"[{idx}] invalid gt ")
                 failed_count += 1
                 continue
 
